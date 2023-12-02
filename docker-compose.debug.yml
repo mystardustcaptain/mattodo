@@ -1,0 +1,10 @@
+version: '3.4'
+
+services:
+  mattodo:
+    image: mattodo
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 9003:9003
