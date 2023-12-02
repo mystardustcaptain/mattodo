@@ -3,24 +3,28 @@
 Provide code and instructions on how to install the project.
 
 ```bash
-git clone https://github.com/username/project.git
-cd project
+git clone https://github.com/mystardustcaptain/mattodo.git
 ```
 
-## Building the App
-
-Instructions on how to build the application.
+## Dependencies
 
 ```bash
-go build
+go get github.com/gorilla/mux
+go get github.com/mattn/go-sqlite3
 ```
 
 ## Running the App
 
-Instructions on how to run the application.
+The application can be run by using Docker.
 
 ```bash
-./project
+docker compose up
+```
+
+Or, if you prefer to run it locally from your Visual Studio.
+
+```bash
+go run .
 ```
 
 ## Testing the App
