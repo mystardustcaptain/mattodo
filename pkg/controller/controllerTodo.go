@@ -9,7 +9,13 @@ import (
 )
 
 func GetTodos(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Get Todos")
+	// Retrieve user ID from the request context
+	userID, ok := r.Context().Value("user_id").(string)
+	if !ok {
+		fmt.Println("Failed to read context")
+		
+	}
+	fmt.Fprintf(w, "Get Todos for user %s", userID)
 }
 
 func GetTodoById(w http.ResponseWriter, r *http.Request) {

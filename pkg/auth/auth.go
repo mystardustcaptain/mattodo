@@ -48,6 +48,9 @@ var OAuthConfigs = map[string]*oauth2.Config{
 var OAuthStateString = "random"
 
 // GetUserFromOAuthToken exchanges an OAuth code for a token, then fetches user information
+// provider: google, facebook, github
+// code: code returned from the OAuth provider
+// returns the user information or an error
 func GetUserFromOAuthToken(provider string, code string) (*UserInfo, error) {
 	config, ok := OAuthConfigs[provider]
 	if !ok {
@@ -68,6 +71,9 @@ func GetUserFromOAuthToken(provider string, code string) (*UserInfo, error) {
 }
 
 // fetchUserInfo retrieves the user information from the OAuth provider
+// provider: google, facebook, github
+// accessToken: token returned from the OAuth provider
+// returns the user information or an error
 func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
 	var endpoint string
 	switch provider {
@@ -120,6 +126,7 @@ func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
 	return &userInfo, nil
 }
 
+// CreateToken creates a JWT token with the user ID as the subject
 func CreateToken(userID string) (string, error) {
 	var mySigningKey = []byte(os.Getenv("SIGNING_KEY"))
 
@@ -161,18 +168,24 @@ func ValidateTokenMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			// Proceed with the next handler
-			next.ServeHTTP(w, r)
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			if userID, ok := claims["user_id"].(string); ok && userID != "" {
+				// Add the user ID to the request context
+				ctx := context.WithValue(r.Context(), "user_id", userID)
+				next.ServeHTTP(w, r.WithContext(ctx))
+			} else {
+				// Handle error: User ID not found in token
+			}
 		} else {
 			http.Error(w, "Invalid authorization token", http.StatusUnauthorized)
 		}
 	})
 }
 
+// extractToken extracts the token from the Authorization header
+// expected format:
+// Authorization: Bearer {token-body}
 func extractToken(r *http.Request) string {
-	// Expect the token to be in the Authorization header in the format:
-	// Authorization: Bearer {token-body}
 	bearerToken := r.Header.Get("Authorization")
 
 	strArr := strings.Split(bearerToken, " ")
