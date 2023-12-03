@@ -16,6 +16,7 @@ go get golang.org/x/oauth2/google
 go get golang.org/x/oauth2/facebook
 go get golang.org/x/oauth2/github
 go get github.com/joho/godotenv
+go get github.com/dgrijalva/jwt-go
 ```
 
 ## Running the App

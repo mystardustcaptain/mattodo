@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/mystardustcaptain/mattodo/pkg/auth"
 )
 
 func GetTodos(w http.ResponseWriter, r *http.Request) {
@@ -28,10 +29,9 @@ func DeleteTodoById(w http.ResponseWriter, r *http.Request) {
 }
 
 func RegisterTodoRoutes(router *mux.Router) {
-	router.HandleFunc("/todo", GetTodos).Methods("GET")
-	router.HandleFunc("/todo/{id}", GetTodoById).Methods("GET")
-	router.HandleFunc("/todo", CreateTodo).Methods("POST")
-	router.HandleFunc("/todo/{id}", UpdateTodoById).Methods("PUT")
-	router.HandleFunc("/todo/{id}", DeleteTodoById).Methods("DELETE")
-
+	router.Handle("/todo", auth.ValidateTokenMiddleware(http.HandlerFunc(GetTodos))).Methods("GET")
+	router.Handle("/todo/{id}", auth.ValidateTokenMiddleware(http.HandlerFunc(GetTodoById))).Methods("GET")
+	router.Handle("/todo", auth.ValidateTokenMiddleware(http.HandlerFunc(CreateTodo))).Methods("POST")
+	router.Handle("/todo/{id}", auth.ValidateTokenMiddleware(http.HandlerFunc(UpdateTodoById))).Methods("PUT")
+	router.Handle("/todo/{id}", auth.ValidateTokenMiddleware(http.HandlerFunc(DeleteTodoById))).Methods("DELETE")
 }

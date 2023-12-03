@@ -39,10 +39,19 @@ func HandleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Todo:
-	// create a session or JWT token for the authenticated user??
 	// create or update the user record in database??
 
-	fmt.Fprintf(w, "User Info: %+v", userInfo)
+	// Create a JWT token
+	token, err := auth.CreateToken(userInfo.ID)
+	if err != nil {
+		http.Error(w, "Failed to create token", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the token to the user
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Token: %s\n", token)
+	fmt.Fprintf(w, "User Info: %+v\n", userInfo)
 }
 
 func AuthIndex(w http.ResponseWriter, r *http.Request) {

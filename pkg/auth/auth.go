@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
@@ -114,6 +118,69 @@ func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
 	}
 
 	return &userInfo, nil
+}
+
+func CreateToken(userID string) (string, error) {
+	var mySigningKey = []byte(os.Getenv("SIGNING_KEY"))
+
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+
+	claims["user_id"] = userID
+	claims["exp"] = time.Now().Add(time.Hour * 1).Unix()
+
+	tokenString, err := token.SignedString(mySigningKey)
+
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+func ValidateTokenMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenString := extractToken(r)
+
+		if tokenString == "" {
+			http.Error(w, "Authorization token is required", http.StatusUnauthorized)
+			return
+		}
+
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			// Validate the signing algorithm
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+
+			return []byte(os.Getenv("SIGNING_KEY")), nil
+		})
+
+		if err != nil {
+			http.Error(w, "Invalid authorization token", http.StatusUnauthorized)
+			return
+		}
+
+		if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			// Proceed with the next handler
+			next.ServeHTTP(w, r)
+		} else {
+			http.Error(w, "Invalid authorization token", http.StatusUnauthorized)
+		}
+	})
+}
+
+func extractToken(r *http.Request) string {
+	// Expect the token to be in the Authorization header in the format:
+	// Authorization: Bearer {token-body}
+	bearerToken := r.Header.Get("Authorization")
+
+	strArr := strings.Split(bearerToken, " ")
+	if len(strArr) == 2 {
+		return strArr[1]
+	}
+
+	return ""
 }
 
 // UserInfo represents the user's information returned from the OAuth provider
