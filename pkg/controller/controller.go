@@ -1,16 +1,27 @@
 package controller
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
 )
 
-func Index(w http.ResponseWriter, r *http.Request) {
+type Controller struct {
+	Database *sql.DB
+}
+
+func NewController(db *sql.DB) *Controller {
+	return &Controller{
+		Database: db,
+	}
+}
+
+func (c *Controller) Index(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Server is up and running")
 }
 
-func RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/", Index).Methods("GET")
+func (c *Controller) RegisterRoutes(router *mux.Router) {
+	router.HandleFunc("/", c.Index).Methods("GET")
 }

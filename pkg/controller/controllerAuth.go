@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/mystardustcaptain/mattodo/pkg/auth"
-
 	"github.com/gorilla/mux"
+	"github.com/mystardustcaptain/mattodo/pkg/auth"
 )
 
 // HandleLogin initiates the OAuth login process for a given provider
-func HandleLogin(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	config, ok := auth.OAuthConfigs[provider]
 	if !ok {
@@ -23,7 +22,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleCallback handles the callback from the OAuth provider
-func HandleCallback(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	state := r.FormValue("state")
 	if state != auth.OAuthStateString {
@@ -55,7 +54,7 @@ func HandleCallback(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "User Info: %+v\n", userInfo)
 }
 
-func AuthIndex(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) AuthIndex(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Auth Index")
 }
 
@@ -63,8 +62,8 @@ func AuthIndex(w http.ResponseWriter, r *http.Request) {
 // URL: /auth/login?provider=google
 // URL: /auth/callback?provider=google
 // Other providers: facebook, github
-func RegisterAuthRoutes(router *mux.Router) {
-	router.HandleFunc("/auth", AuthIndex).Methods("GET")
-	router.HandleFunc("/auth/login", HandleLogin).Methods("GET")
-	router.HandleFunc("/auth/callback", HandleCallback).Methods("GET")
+func (c *Controller) RegisterAuthRoutes(router *mux.Router) {
+	router.HandleFunc("/auth", c.AuthIndex).Methods("GET")
+	router.HandleFunc("/auth/login", c.HandleLogin).Methods("GET")
+	router.HandleFunc("/auth/callback", c.HandleCallback).Methods("GET")
 }
