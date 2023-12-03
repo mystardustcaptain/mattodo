@@ -31,6 +31,7 @@ func HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// get userinfo from token exchanged from OAuth code
 	code := r.FormValue("code")
 	userInfo, err := auth.GetUserFromOAuthToken(provider, code)
 	if err != nil {
@@ -41,8 +42,8 @@ func HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Todo:
 	// create or update the user record in database??
 
-	// Create a JWT token
-	token, err := auth.CreateToken(userInfo.ID)
+	// Create a JWT token valid for 1 hour
+	token, err := auth.CreateToken(userInfo.Email)
 	if err != nil {
 		http.Error(w, "Failed to create token", http.StatusInternalServerError)
 		return

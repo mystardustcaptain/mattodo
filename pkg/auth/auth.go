@@ -126,14 +126,14 @@ func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
 	return &userInfo, nil
 }
 
-// CreateToken creates a JWT token with the user ID as the subject
-func CreateToken(userID string) (string, error) {
+// CreateToken creates a JWT token with the userEmail as the subject
+func CreateToken(userEmail string) (string, error) {
 	var mySigningKey = []byte(os.Getenv("SIGNING_KEY"))
 
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 
-	claims["user_id"] = userID
+	claims["userEmail"] = userEmail
 	claims["exp"] = time.Now().Add(time.Hour * 1).Unix()
 
 	tokenString, err := token.SignedString(mySigningKey)
@@ -169,12 +169,13 @@ func ValidateTokenMiddleware(next http.Handler) http.Handler {
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			if userID, ok := claims["user_id"].(string); ok && userID != "" {
-				// Add the user ID to the request context
-				ctx := context.WithValue(r.Context(), "user_id", userID)
+			if userEmail, ok := claims["userEmail"].(string); ok && userEmail != "" {
+				// Add the userEmail to the request context
+				ctx := context.WithValue(r.Context(), "userEmail", userEmail)
 				next.ServeHTTP(w, r.WithContext(ctx))
 			} else {
-				// Handle error: User ID not found in token
+				// Handle error: userEmail not found in token
+				http.Error(w, "userEmail not found in the token", http.StatusUnauthorized)
 			}
 		} else {
 			http.Error(w, "Invalid authorization token", http.StatusUnauthorized)
