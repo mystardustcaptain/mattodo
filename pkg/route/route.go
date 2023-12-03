@@ -8,13 +8,9 @@ import (
 func InitializeRoutes() *mux.Router {
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", controller.Index).Methods("GET")
-
-	router.HandleFunc("/todo", controller.GetTodos).Methods("GET")
-	router.HandleFunc("/todo/{id}", controller.GetTodoById).Methods("GET")
-	router.HandleFunc("/todo", controller.CreateTodo).Methods("POST")
-	router.HandleFunc("/todo/{id}", controller.UpdateTodoById).Methods("PUT")
-	router.HandleFunc("/todo/{id}", controller.DeleteTodoById).Methods("DELETE")
+	controller.RegisterRoutes(router)
+	controller.RegisterTodoRoutes(router)
+	controller.RegisterAuthRoutes(router)
 
 	return router
 }

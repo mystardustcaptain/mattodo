@@ -11,6 +11,11 @@ git clone https://github.com/mystardustcaptain/mattodo.git
 ```bash
 go get github.com/gorilla/mux
 go get github.com/mattn/go-sqlite3
+go get golang.org/x/oauth2
+go get golang.org/x/oauth2/google
+go get golang.org/x/oauth2/facebook
+go get golang.org/x/oauth2/github
+go get github.com/joho/godotenv
 ```
 
 ## Running the App

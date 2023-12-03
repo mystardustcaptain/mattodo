@@ -8,3 +8,10 @@ services:
       dockerfile: ./Dockerfile
     ports:
       - 9003:9003
+    env_file:
+      - .env
+    # Alternatively, you can specify environment variables in the following
+    environment:
+      - DOCKER_ENV_SET=true
+    #   - GOOGLE_CLIENT_ID=
+    #   - GOOGLE_CLIENT_SECRET=
