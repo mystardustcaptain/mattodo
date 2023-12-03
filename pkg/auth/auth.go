@@ -17,14 +17,14 @@ import (
 // OAuthConfigurations for multiple providers
 var OAuthConfigs = map[string]*oauth2.Config{
 	"google": {
-		RedirectURL:  "http://localhost:8080//auth/callback?provider=google",
+		RedirectURL:  "http://localhost:9003/auth/callback?provider=google",
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
+		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
 		Endpoint:     google.Endpoint,
 	},
 	"facebook": {
-		RedirectURL:  "http://localhost:8080/auth/callback?provider=facebook",
+		RedirectURL:  "http://localhost:9003/auth/callback?provider=facebook",
 		ClientID:     os.Getenv("FACEBOOK_CLIENT_ID"),
 		ClientSecret: os.Getenv("FACEBOOK_CLIENT_SECRET"),
 		Scopes:       []string{"email"},
