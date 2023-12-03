@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/mystardustcaptain/mattodo/pkg/auth"
+	"github.com/mystardustcaptain/mattodo/pkg/model"
 )
 
 // HandleLogin initiates the OAuth login process for a given provider
@@ -38,8 +39,29 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Todo:
-	// create or update the user record in database??
+	// Check if user email already exists in the database
+	exist, err := model.IsUserExistByEmail(c.Database, userInfo.Email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// If not exist, create a user entry in the database
+	if !exist {
+		fmt.Println("User not found, registering user entry.")
+
+		db_user := model.NewUser(provider, userInfo.ID, userInfo.Name, userInfo.Email)
+		if err := db_user.CreateUser(c.Database); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Println("User entry created for ", userInfo.Email)
+	}
+
+	// TODO: Choosing EMAIL as the checking condition is a simple approach.
+	// Unhandled Scenario like, user authenticate using one Provider previously (OAuthProvider + OAuthID)
+	// But changed the associated EMAIL, ...
 
 	// Create a JWT token valid for 1 hour
 	token, err := auth.CreateToken(userInfo.Email)
