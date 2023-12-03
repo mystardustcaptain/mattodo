@@ -14,7 +14,8 @@ func (c *Controller) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	config, ok := auth.OAuthConfigs[provider]
 	if !ok {
-		http.Error(w, "Unknown OAuth provider", http.StatusBadRequest)
+		fmt.Println("Unknown OAuth provider")
+		respondWithError(w, http.StatusBadRequest, "Unknown OAuth provider")
 		return
 	}
 
@@ -27,7 +28,8 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	state := r.FormValue("state")
 	if state != auth.OAuthStateString {
-		http.Error(w, "Invalid state parameter", http.StatusBadRequest)
+		fmt.Println("Invalid state parameter")
+		respondWithError(w, http.StatusBadRequest, "Invalid state parameter")
 		return
 	}
 
@@ -35,26 +37,38 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.FormValue("code")
 	userInfo, err := auth.GetUserFromOAuthToken(provider, code)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		fmt.Println("Failed to get user info: ", err.Error())
+		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	// Check if user email already exists in the database
 	exist, err := model.IsUserExistByEmail(c.Database, userInfo.Email)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		fmt.Println("Failed to check user existance: ", err.Error())
+		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	var db_user model.User
+
 	if exist {
+		db_user = model.User{Email: userInfo.Email}
+		if err := db_user.GetUserByEmail(c.Database); err != nil {
+			fmt.Println("Failed to get user entry: ", err.Error())
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
 		fmt.Println("User entry found: ", userInfo.Email)
 	} else {
 		// If not exist, create a user entry in the database
 		fmt.Println("User not found, registering user entry.")
 
-		db_user := model.NewUser(provider, userInfo.ID, userInfo.Name, userInfo.Email)
+		db_user = model.User{OAuthProvider: provider, OAuthID: userInfo.ID, Name: userInfo.Name, Email: userInfo.Email}
 		if err := db_user.CreateUser(c.Database); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			fmt.Println("Failed to create user entry: ", err.Error())
+			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -66,16 +80,15 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// But changed the associated EMAIL, ...
 
 	// Create a JWT token valid for 1 hour
-	token, err := auth.CreateToken(userInfo.Email)
+	token, err := auth.CreateToken(db_user.Email, db_user.ID)
 	if err != nil {
-		http.Error(w, "Failed to create token", http.StatusInternalServerError)
+		fmt.Println("Failed to create token: ", err.Error())
+		respondWithError(w, http.StatusInternalServerError, "Failed to create token")
 		return
 	}
 
 	// Return the token to the user
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Token: %s\n", token)
-	fmt.Fprintf(w, "User Info: %+v\n", userInfo)
+	respondWithJSON(w, http.StatusOK, token)
 }
 
 func (c *Controller) AuthIndex(w http.ResponseWriter, r *http.Request) {

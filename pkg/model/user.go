@@ -56,3 +56,5 @@ func (u *User) CreateUser(db *sql.DB) error {
 
 	return err
 }
+
+// TODO: There is currently no mechanism to DeleteUser and UpdateUser
