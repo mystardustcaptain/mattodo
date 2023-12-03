@@ -46,8 +46,10 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If not exist, create a user entry in the database
-	if !exist {
+	if exist {
+		fmt.Println("User entry found: ", userInfo.Email)
+	} else {
+		// If not exist, create a user entry in the database
 		fmt.Println("User not found, registering user entry.")
 
 		db_user := model.NewUser(provider, userInfo.ID, userInfo.Name, userInfo.Email)
