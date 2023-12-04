@@ -27,14 +27,21 @@ func (c *Controller) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/", c.Index).Methods("GET")
 }
 
+// respondWithError is a helper function to respond with an error and a status code
 func respondWithError(w http.ResponseWriter, code int, message string) {
 	respondWithJSON(w, code, map[string]string{"error": message})
 }
 
+// respondWithJSON is a helper function to respond with JSON and a status code
+// payload can be nil
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
+	if payload != nil {
+		response, _ := json.Marshal(payload)
+		// sequence of these lines matters
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(code)
+		w.Write(response)
+	} else {
+		w.WriteHeader(code)
+	}
 }
