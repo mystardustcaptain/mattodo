@@ -16,31 +16,37 @@ import (
 	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
+
+	_ "github.com/mystardustcaptain/mattodo/pkg/config"
 )
 
 // OAuthConfigurations for multiple providers
-var OAuthConfigs = map[string]*oauth2.Config{
-	"google": {
-		RedirectURL:  "http://localhost:9003/auth/callback?provider=google",
-		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
-		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
-		Endpoint:     google.Endpoint,
-	},
-	"facebook": {
-		RedirectURL:  "http://localhost:9003/auth/callback?provider=facebook",
-		ClientID:     os.Getenv("FACEBOOK_CLIENT_ID"),
-		ClientSecret: os.Getenv("FACEBOOK_CLIENT_SECRET"),
-		Scopes:       []string{"email"},
-		Endpoint:     facebook.Endpoint,
-	},
-	"github": {
-		RedirectURL:  "http://localhost:9003/auth/callback?provider=github",
-		ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
-		ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
-		Scopes:       []string{"user:email"},
-		Endpoint:     github.Endpoint,
-	},
+var OAuthConfigs map[string]*oauth2.Config
+
+func init() {
+	OAuthConfigs = map[string]*oauth2.Config{
+		"google": {
+			RedirectURL:  "http://localhost:9003/auth/callback?provider=google",
+			ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+			ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
+			Endpoint:     google.Endpoint,
+		},
+		"facebook": {
+			RedirectURL:  "http://localhost:9003/auth/callback?provider=facebook",
+			ClientID:     os.Getenv("FACEBOOK_CLIENT_ID"),
+			ClientSecret: os.Getenv("FACEBOOK_CLIENT_SECRET"),
+			Scopes:       []string{"email"},
+			Endpoint:     facebook.Endpoint,
+		},
+		"github": {
+			RedirectURL:  "http://localhost:9003/auth/callback?provider=github",
+			ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
+			ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
+			Scopes:       []string{"user:email"},
+			Endpoint:     github.Endpoint,
+		},
+	}
 }
 
 // OAuthStateString is a randomly generated string to protect against CSRF attacks
