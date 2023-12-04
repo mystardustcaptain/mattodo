@@ -9,6 +9,7 @@ CREATE TABLE todos (
     updated_at TIMESTAMP NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id)
 )
+CREATE INDEX idx_todos_user_id ON todos(user_id);
 
 CREATE TABLE users (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
