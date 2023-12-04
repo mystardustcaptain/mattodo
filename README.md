@@ -47,10 +47,10 @@ DB_PATH=./mainDB.sqlite3
 The application can be run by using the Docker image published to Docker Hub.
 
 ```bash
-PS> docker run -p 9003:9003 -v ${PWD}/.env:/.env eiggub/mattodo
-CMD> docker run -p 9003:9003 -v $(pwd)/.env:/.env eiggub/mattodo
+PS> docker run -p 9003:9003 --env-file .env -e DOCKER_ENV_SET=true eiggub/mattodo
+CMD> docker run -p 9003:9003 --env-file .env -e DOCKER_ENV_SET=true eiggub/mattodo
 ```
-`-v ${PWD}/.env:/.env` mounts the .env file from the current directory `(${PWD}/.env)` to the root directory in the container `(/.env)`. 
+
 
 ### Visual Studio (Not Recommended)
 
