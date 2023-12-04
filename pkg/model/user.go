@@ -11,16 +11,6 @@ type User struct {
 	Email         string `json:"email"`
 }
 
-// NewUser creates a new User instance with details from an OAuth provider.
-func NewUser(oAuthProvider, oAuthID, name, email string) *User {
-	return &User{
-		OAuthProvider: oAuthProvider,
-		OAuthID:       oAuthID,
-		Name:          name,
-		Email:         email,
-	}
-}
-
 func IsUserExistByEmail(db *sql.DB, email string) (bool, error) {
 	var exists bool
 
