@@ -175,8 +175,9 @@ To create a Todo item associated to you:
 ```bash
 curl -X POST -H "Authorization: Bearer my_JWT_token" http://localhost:9003/todo -H "Content-Type: application/json" --data "{'title': 'My Birthday', 'completed': false}"
 ```
+Only `title` and `completed` fields will be taken into creation process.
 
-If successful, you will received the Todo item created:
+If successful, you will received the full JSON of the Todo item created:
 ```json
 {
     "id": 15,
@@ -222,3 +223,4 @@ If successful, you will received the complete Todo item updated:
     "updated_at": "2023-12-10T10:00:00.39291084Z"
 }
 ```
+If the Todo item you're trying to update does not belong to you, the update will fail.
