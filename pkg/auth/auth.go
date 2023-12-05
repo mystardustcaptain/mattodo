@@ -30,6 +30,12 @@ type UserInfo struct {
 	Name  string `json:"name"`
 }
 
+// contextKey is a type used for context keys to avoid collisions
+type contextKey string
+
+// userIDKey is the key for userID in context
+const ContextUserIDKey contextKey = "userID"
+
 // OAuthConfigurations for multiple providers
 var OAuthConfigs map[string]*oauth2.Config
 
@@ -75,12 +81,14 @@ func GetUserFromOAuthCode(provider string, code string) (*UserInfo, error) {
 		return nil, errors.New("unknown OAuth provider")
 	}
 
+	// Exchange the OAuth code for a token
 	token, err := config.Exchange(context.Background(), code)
 	if err != nil {
 		log.Printf("Failed to exchange token: %s\n", err.Error())
 		return nil, err
 	}
 
+	// Fetch user info from the OAuth provider
 	userInfo, err := fetchUserInfo(provider, token.AccessToken)
 	if err != nil {
 		log.Printf("Failed to fetch user info: %s\n", err.Error())
@@ -95,93 +103,28 @@ func GetUserFromOAuthCode(provider string, code string) (*UserInfo, error) {
 // accessToken: token returned from the OAuth provider
 // returns the user information or an error
 func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
-	var endpoint string
-	switch provider {
-	case "google":
-		endpoint = "https://www.googleapis.com/oauth2/v2/userinfo"
-	case "facebook":
-		endpoint = "https://graph.facebook.com/me?fields=id,name,email"
-	case "github":
-		endpoint = "https://api.github.com/user"
-	default:
-		return nil, errors.New("unknown OAuth provider for user info")
-	}
-
-	// Create a new request
-	req, err := http.NewRequest("GET", endpoint, nil)
+	endpoint, err := getEndpoint(provider, accessToken)
 	if err != nil {
-		log.Printf("Failed to create request: %s\n", err.Error())
+		log.Printf("Failed to get endpoint: %s\n", err.Error())
 		return nil, err
 	}
 
-	// Set the Authorization header for GitHub
-	if provider == "github" {
-		req.Header.Set("Authorization", "token "+accessToken)
-	} else {
-		// For others, use access token in query params
-		q := req.URL.Query()
-		q.Add("access_token", accessToken)
-		req.URL.RawQuery = q.Encode()
-	}
-
-	// Make the HTTP request
-	client := &http.Client{}
-	response, err := client.Do(req)
+	userInfo, err := makeUserInfoRequest(endpoint, provider, accessToken)
 	if err != nil {
-		log.Printf("Failed to make request: %s\n", err.Error())
-		return nil, err
-	}
-	defer response.Body.Close()
-
-	// Read the response body
-	data, err := io.ReadAll(response.Body)
-	if err != nil {
-		log.Printf("Failed to read response body: %s\n", err.Error())
-		return nil, err
-	}
-
-	// For logging purpose
-	log.Printf("Response body: %s\n", string(data))
-
-	// Unmarshal the JSON data into the UserInfo struct
-	var userInfo UserInfo
-	if err := json.Unmarshal(data, &userInfo); err != nil {
-		log.Printf("Failed to unmarshal JSON: %s\n", err.Error())
+		log.Printf("Failed to make user info request: %s\n", err.Error())
 		return nil, err
 	}
 
 	if provider == "github" {
-		// Fetch additional email info
-		emailReq, _ := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
-		emailReq.Header.Set("Authorization", "token "+accessToken)
-		emailResponse, err := client.Do(emailReq)
-		if err != nil {
-			log.Printf("Failed to fetch GitHub email: %s\n", err.Error())
+		// Fetch additional email info, only required for GitHub
+		// As it is not included in the user info response
+		if err := fetchGitHubEmail(userInfo, accessToken); err != nil {
 			return nil, err
 		}
-		defer emailResponse.Body.Close()
 
-		var emails []struct {
-			Email    string `json:"email"`
-			Primary  bool   `json:"primary"`
-			Verified bool   `json:"verified"`
-		}
-		emailData, _ := io.ReadAll(emailResponse.Body)
-
-		log.Println("Emails: ", string(emailData))
-
-		json.Unmarshal(emailData, &emails)
-
-		//Process and find primary email
-		for _, email := range emails {
-			if email.Primary && email.Verified {
-				userInfo.Email = email.Email
-				break
-			}
-		}
 	}
 
-	return &userInfo, nil
+	return userInfo, nil
 }
 
 // CreateToken creates a JWT token with the userEmail as the subject
@@ -254,7 +197,7 @@ func ValidateTokenMiddleware(next http.Handler) http.Handler {
 			}
 
 			// Add the db userID to the request context
-			ctx := context.WithValue(r.Context(), "userID", int(userID))
+			ctx := context.WithValue(r.Context(), ContextUserIDKey, int(userID))
 			next.ServeHTTP(w, r.WithContext(ctx))
 
 		} else {
@@ -324,4 +267,107 @@ func IsEmailValid(email string) bool {
 	emailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
 
 	return emailRegex.MatchString(email)
+}
+
+// getEndpoint - Returns the API endpoint for the given provider.
+func getEndpoint(provider, accessToken string) (string, error) {
+	var endpoint string
+
+	switch provider {
+	case "google":
+		endpoint = "https://www.googleapis.com/oauth2/v2/userinfo"
+	case "facebook":
+		endpoint = "https://graph.facebook.com/me?fields=id,name,email"
+	case "github":
+		endpoint = "https://api.github.com/user"
+	default:
+		return "", errors.New("unknown OAuth provider for user info")
+	}
+
+	return endpoint, nil
+}
+
+// makeUserInfoRequest - Makes the HTTP request to fetch user info.
+func makeUserInfoRequest(endpoint, provider, accessToken string) (*UserInfo, error) {
+	// Create a new request
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		log.Printf("Failed to create request: %s\n", err.Error())
+		return nil, err
+	}
+
+	// Set the Authorization header for GitHub
+	if provider == "github" {
+		req.Header.Set("Authorization", "token "+accessToken)
+	} else {
+		// For others, use access token in query params
+		q := req.URL.Query()
+		q.Add("access_token", accessToken)
+		req.URL.RawQuery = q.Encode()
+	}
+
+	// Make the HTTP request
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		log.Printf("Failed to make request: %s\n", err.Error())
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	// Read the response body
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		log.Printf("Failed to read response body: %s\n", err.Error())
+		return nil, err
+	}
+
+	// For logging purpose
+	log.Printf("Response body: %s\n", string(data))
+
+	// Unmarshal the JSON data into the UserInfo struct
+	var userInfo UserInfo
+	if err := json.Unmarshal(data, &userInfo); err != nil {
+		log.Printf("Failed to unmarshal JSON: %s\n", err.Error())
+		return nil, err
+	}
+
+	return &userInfo, nil
+}
+
+// fetchGitHubEmail - Fetches the primary email for GitHub users.
+// Only the primary email is considered as the user's email.
+func fetchGitHubEmail(userInfo *UserInfo, accessToken string) error {
+	// Make the HTTP request
+	client := &http.Client{}
+
+	emailReq, _ := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
+	emailReq.Header.Set("Authorization", "token "+accessToken)
+	emailResponse, err := client.Do(emailReq)
+	if err != nil {
+		log.Printf("Failed to fetch GitHub email: %s\n", err.Error())
+		return err
+	}
+	defer emailResponse.Body.Close()
+
+	var emails []struct {
+		Email    string `json:"email"`
+		Primary  bool   `json:"primary"`
+		Verified bool   `json:"verified"`
+	}
+	emailData, _ := io.ReadAll(emailResponse.Body)
+
+	log.Println("Emails: ", string(emailData))
+
+	json.Unmarshal(emailData, &emails)
+
+	//Process and find primary email
+	for _, email := range emails {
+		if email.Primary && email.Verified {
+			userInfo.Email = email.Email
+			break
+		}
+	}
+
+	return nil
 }
