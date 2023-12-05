@@ -25,7 +25,7 @@ func (c *Controller) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	config, ok := auth.OAuthConfigs[provider]
 	if !ok {
-		log.Println("Unknown OAuth provider")
+		log.Printf("Unknown OAuth provider")
 		respondWithError(w, http.StatusBadRequest, "Unknown OAuth provider")
 		return
 	}
@@ -44,7 +44,7 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	state := r.FormValue("state")
 	if state != auth.OAuthStateString {
-		log.Println("Invalid state parameter")
+		log.Printf("Invalid state parameter")
 		respondWithError(w, http.StatusBadRequest, "Invalid state parameter")
 		return
 	}
@@ -53,13 +53,13 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.FormValue("code")
 	userInfo, err := auth.GetUserFromOAuthCode(provider, code)
 	if err != nil {
-		log.Println("Failed to get user info: ", err.Error())
+		log.Printf("Failed to get user info: %s", err.Error())
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// check if userInfo.Email is a valid email address format
 	if !auth.IsEmailValid(userInfo.Email) {
-		log.Println("Invalid email address found from OAuth provider")
+		log.Printf("Invalid email address found from OAuth provider: %s", userInfo.Email)
 		respondWithError(w, http.StatusBadRequest, "Invalid email address found from OAuth provider")
 		return
 	}
@@ -67,7 +67,7 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Check if user email already exists in the database
 	exist, err := model.IsUserExistByEmail(c.Database, userInfo.Email)
 	if err != nil {
-		log.Println("Failed to check user existance: ", err.Error())
+		log.Printf("Failed to check user existance: %s", err.Error())
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -79,24 +79,24 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	if exist {
 		db_user = model.User{Email: userInfo.Email}
 		if err := db_user.GetUserByEmail(c.Database); err != nil {
-			log.Println("Failed to get user entry: ", err.Error())
+			log.Printf("Failed to get user entry: %s", err.Error())
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		log.Println("User entry found: ", userInfo.Email)
+		log.Printf("User entry found: %s", userInfo.Email)
 	} else {
 		// If not exist, create a user entry in the database
-		log.Println("User not found, registering user entry.")
+		log.Printf("User not found, registering user entry.")
 
 		db_user = model.User{OAuthProvider: provider, OAuthID: userInfo.ID, Name: userInfo.Name, Email: userInfo.Email}
 		if err := db_user.CreateUser(c.Database); err != nil {
-			log.Println("Failed to create user entry: ", err.Error())
+			log.Printf("Failed to create user entry: %s", err.Error())
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		log.Println("User entry created for ", userInfo.Email)
+		log.Printf("User entry created for %s", userInfo.Email)
 	}
 
 	// TODO: Choosing EMAIL as the checking condition is a simple approach.
@@ -106,7 +106,7 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Create a JWT token valid for 1 hour
 	token, err := auth.CreateToken(db_user.Email, db_user.ID, 1)
 	if err != nil {
-		log.Println("Failed to create token: ", err.Error())
+		log.Printf("Failed to create token: %s", err.Error())
 		respondWithError(w, http.StatusInternalServerError, "Failed to create token")
 		return
 	}
