@@ -24,7 +24,7 @@ func (c *Controller) RegisterTodoRoutes(router *mux.Router) {
 // with userID saved in the request context
 func (c *Controller) GetTodos(w http.ResponseWriter, r *http.Request) {
 	// Retrieve iam / db userID from the request context
-	iam, ok := r.Context().Value("userID").(int)
+	iam, ok := r.Context().Value(auth.ContextUserIDKey).(int)
 	if !ok {
 		log.Printf("Failed to read context")
 		respondWithError(w, http.StatusInternalServerError, "Failed to read context")
@@ -46,7 +46,7 @@ func (c *Controller) GetTodos(w http.ResponseWriter, r *http.Request) {
 // with userID saved in the request context
 func (c *Controller) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	// Retrieve iam from the request context
-	iam, ok := r.Context().Value("userID").(int)
+	iam, ok := r.Context().Value(auth.ContextUserIDKey).(int)
 	if !ok {
 		log.Printf("Failed to read context")
 		respondWithError(w, http.StatusInternalServerError, "Failed to read context")
@@ -75,7 +75,7 @@ func (c *Controller) CreateTodo(w http.ResponseWriter, r *http.Request) {
 // with userID saved in the request context
 func (c *Controller) DeleteTodoById(w http.ResponseWriter, r *http.Request) {
 	// Retrieve iam from the request context
-	iam, ok := r.Context().Value("userID").(int)
+	iam, ok := r.Context().Value(auth.ContextUserIDKey).(int)
 	if !ok {
 		log.Printf("Failed to read context")
 		respondWithError(w, http.StatusInternalServerError, "Failed to read context")
@@ -110,7 +110,7 @@ func (c *Controller) DeleteTodoById(w http.ResponseWriter, r *http.Request) {
 // with userID saved in the request context
 func (c *Controller) MarkTodoCompleteById(w http.ResponseWriter, r *http.Request) {
 	// Retrieve iam from the request context
-	iam, ok := r.Context().Value("userID").(int)
+	iam, ok := r.Context().Value(auth.ContextUserIDKey).(int)
 	if !ok {
 		log.Printf("Failed to read context")
 		respondWithError(w, http.StatusInternalServerError, "Failed to read context")
