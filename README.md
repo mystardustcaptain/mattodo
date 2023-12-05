@@ -25,12 +25,15 @@ Make sure it is available before running the application.
 ```
 GOOGLE_CLIENT_ID=yourGoogleClientId
 GOOGLE_CLIENT_SECRET=yourGoogleClientSecret
+GOOGLE_REDIRECT_URL=http://localhost:9003/auth/callback?provider=google
 
 FACEBOOK_CLIENT_ID=123456789
 FACEBOOK_CLIENT_SECRET=123456789
+FACEBOOK_REDIRECT_URL=http://localhost:9003/auth/callback?provider=facebook
 
 GITHUB_CLIENT_ID=123456789
 GITHUB_CLIENT_SECRET=123456789
+GITHUB_REDIRECT_URL=http://localhost:9003/auth/callback?provider=github
 
 SIGNING_KEY=1234
 
