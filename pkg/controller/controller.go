@@ -3,7 +3,6 @@ package controller
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -19,12 +18,13 @@ func NewController(db *sql.DB) *Controller {
 	}
 }
 
-func (c *Controller) Index(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Server is up and running")
-}
-
+// RegisterRoutes registers routes for the controller
 func (c *Controller) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/", c.Index).Methods("GET")
+}
+
+func (c *Controller) Index(w http.ResponseWriter, r *http.Request) {
+	respondWithJSON(w, http.StatusOK, map[string]string{"message": "Server is up and running"})
 }
 
 // respondWithError is a helper function to respond with an error and a status code

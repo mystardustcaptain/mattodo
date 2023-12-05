@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -9,12 +9,23 @@ import (
 	"github.com/mystardustcaptain/mattodo/pkg/model"
 )
 
+// RegisterAuthRoutes registers the authentication routes to the router
+// URL: /auth/login?provider=google
+// URL: /auth/callback?provider=google
+// Other providers: facebook, github
+func (c *Controller) RegisterAuthRoutes(router *mux.Router) {
+	router.HandleFunc("/auth", c.AuthIndex).Methods("GET")
+	router.HandleFunc("/auth/login", c.HandleLogin).Methods("GET")
+	router.HandleFunc("/auth/callback", c.HandleCallback).Methods("GET")
+}
+
 // HandleLogin initiates the OAuth login process for a given provider
+// It redirects the user to the provider's login page
 func (c *Controller) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	config, ok := auth.OAuthConfigs[provider]
 	if !ok {
-		fmt.Println("Unknown OAuth provider")
+		log.Println("Unknown OAuth provider")
 		respondWithError(w, http.StatusBadRequest, "Unknown OAuth provider")
 		return
 	}
@@ -24,20 +35,25 @@ func (c *Controller) HandleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleCallback handles the callback from the OAuth provider
+// It exchanges the OAuth code for an access token
+// and then exchanges the access token for user info.
+// User info is made sure available in the database.
+// If not, create a new user entry in the database.
+// Finally, it creates a JWT token and returns it to the user.
 func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	state := r.FormValue("state")
 	if state != auth.OAuthStateString {
-		fmt.Println("Invalid state parameter")
+		log.Println("Invalid state parameter")
 		respondWithError(w, http.StatusBadRequest, "Invalid state parameter")
 		return
 	}
 
 	// get userinfo from token exchanged from OAuth code
 	code := r.FormValue("code")
-	userInfo, err := auth.GetUserFromOAuthToken(provider, code)
+	userInfo, err := auth.GetUserFromOAuthCode(provider, code)
 	if err != nil {
-		fmt.Println("Failed to get user info: ", err.Error())
+		log.Println("Failed to get user info: ", err.Error())
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -45,7 +61,7 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Check if user email already exists in the database
 	exist, err := model.IsUserExistByEmail(c.Database, userInfo.Email)
 	if err != nil {
-		fmt.Println("Failed to check user existance: ", err.Error())
+		log.Println("Failed to check user existance: ", err.Error())
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -57,24 +73,24 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	if exist {
 		db_user = model.User{Email: userInfo.Email}
 		if err := db_user.GetUserByEmail(c.Database); err != nil {
-			fmt.Println("Failed to get user entry: ", err.Error())
+			log.Println("Failed to get user entry: ", err.Error())
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		fmt.Println("User entry found: ", userInfo.Email)
+		log.Println("User entry found: ", userInfo.Email)
 	} else {
 		// If not exist, create a user entry in the database
-		fmt.Println("User not found, registering user entry.")
+		log.Println("User not found, registering user entry.")
 
 		db_user = model.User{OAuthProvider: provider, OAuthID: userInfo.ID, Name: userInfo.Name, Email: userInfo.Email}
 		if err := db_user.CreateUser(c.Database); err != nil {
-			fmt.Println("Failed to create user entry: ", err.Error())
+			log.Println("Failed to create user entry: ", err.Error())
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		fmt.Println("User entry created for ", userInfo.Email)
+		log.Println("User entry created for ", userInfo.Email)
 	}
 
 	// TODO: Choosing EMAIL as the checking condition is a simple approach.
@@ -84,7 +100,7 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Create a JWT token valid for 1 hour
 	token, err := auth.CreateToken(db_user.Email, db_user.ID, 1)
 	if err != nil {
-		fmt.Println("Failed to create token: ", err.Error())
+		log.Println("Failed to create token: ", err.Error())
 		respondWithError(w, http.StatusInternalServerError, "Failed to create token")
 		return
 	}
@@ -94,15 +110,5 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller) AuthIndex(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Auth Index")
-}
-
-// RegisterAuthRoutes registers the authentication routes to the router
-// URL: /auth/login?provider=google
-// URL: /auth/callback?provider=google
-// Other providers: facebook, github
-func (c *Controller) RegisterAuthRoutes(router *mux.Router) {
-	router.HandleFunc("/auth", c.AuthIndex).Methods("GET")
-	router.HandleFunc("/auth/login", c.HandleLogin).Methods("GET")
-	router.HandleFunc("/auth/callback", c.HandleCallback).Methods("GET")
+	respondWithJSON(w, http.StatusOK, map[string]string{"message": "Auth Index"})
 }

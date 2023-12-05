@@ -184,6 +184,9 @@ func TestCreateTodoItem_ExecuteCorrectQuery(t *testing.T) {
 	}
 }
 
+// TestCreateTodoItem_ReturnErrorWhenQueryError tests that MarkComplete executes the correct query,
+// returns the correct TodoItem data,
+// Ignored fields: UserID, Title, Completed, CreatedAt, UpdatedAt
 func TestMarkComplete_ExecuteCorrectQuery(t *testing.T) {
 	/// Arrange
 	///
@@ -221,7 +224,7 @@ func TestMarkComplete_ExecuteCorrectQuery(t *testing.T) {
 	assert.NoError(t, err, "Expected no error but got one")
 	assert.Equal(t, 2, todo.ID)
 	assert.Equal(t, 45, todo.UserID) // even though user specified user id 45, the system should use user id 3 instead, and do not update the user id in the object
-	assert.Equal(t, "Todo 2", todo.Title)
+	assert.Equal(t, "Todo 2", todo.Title, "Expected title not updated")
 	assert.Equal(t, true, todo.Completed) // status should be updated to true and updated in the object
 	assert.NotEqual(t, expectedTimeNow, todo.CreatedAt, "Expected created_at not updated")
 	assert.Equal(t, expectedTimeNow, todo.UpdatedAt, "Expected updated_at to be time of creation instead of what user given")

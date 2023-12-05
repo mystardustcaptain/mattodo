@@ -63,11 +63,11 @@ func init() {
 // OAuthStateString is a randomly generated string to protect against CSRF attacks
 var OAuthStateString = "wzp-bdt*czm8GEQ9kuc"
 
-// GetUserFromOAuthToken exchanges an OAuth code for a token, then fetches user information
+// GetUserFromOAuthCode exchanges an OAuth code for a token, then fetches user information
 // provider: google, facebook, github
-// code: code returned from the OAuth provider
+// code: auth code returned from the OAuth provider
 // returns the user information or an error
-func GetUserFromOAuthToken(provider string, code string) (*UserInfo, error) {
+func GetUserFromOAuthCode(provider string, code string) (*UserInfo, error) {
 	config, ok := OAuthConfigs[provider]
 	if !ok {
 		log.Printf("Unknown OAuth provider: %s\n", provider)
