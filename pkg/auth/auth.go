@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -20,9 +21,19 @@ import (
 	_ "github.com/mystardustcaptain/mattodo/pkg/config"
 )
 
+// UserInfo represents the user's information returned from the OAuth provider
+type UserInfo struct {
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	VerifiedEmail bool   `json:"verified_email"`
+	Name          string `json:"name"`
+}
+
 // OAuthConfigurations for multiple providers
 var OAuthConfigs map[string]*oauth2.Config
 
+// Initialize OAuth configurations for multiple providers
+// required environment variables
 func init() {
 	OAuthConfigs = map[string]*oauth2.Config{
 		"google": {
@@ -36,7 +47,7 @@ func init() {
 			RedirectURL:  "http://localhost:9003/auth/callback?provider=facebook",
 			ClientID:     os.Getenv("FACEBOOK_CLIENT_ID"),
 			ClientSecret: os.Getenv("FACEBOOK_CLIENT_SECRET"),
-			Scopes:       []string{"email"},
+			Scopes:       []string{"email, name"},
 			Endpoint:     facebook.Endpoint,
 		},
 		"github": {
@@ -50,8 +61,7 @@ func init() {
 }
 
 // OAuthStateString is a randomly generated string to protect against CSRF attacks
-// Replace with a random or dynamically generated string
-var OAuthStateString = "random"
+var OAuthStateString = "wzp-bdt*czm8GEQ9kuc"
 
 // GetUserFromOAuthToken exchanges an OAuth code for a token, then fetches user information
 // provider: google, facebook, github
@@ -60,16 +70,19 @@ var OAuthStateString = "random"
 func GetUserFromOAuthToken(provider string, code string) (*UserInfo, error) {
 	config, ok := OAuthConfigs[provider]
 	if !ok {
+		log.Printf("Unknown OAuth provider: %s\n", provider)
 		return nil, errors.New("unknown OAuth provider")
 	}
 
 	token, err := config.Exchange(context.Background(), code)
 	if err != nil {
+		log.Printf("Failed to exchange token: %s\n", err.Error())
 		return nil, err
 	}
 
 	userInfo, err := fetchUserInfo(provider, token.AccessToken)
 	if err != nil {
+		log.Printf("Failed to fetch user info: %s\n", err.Error())
 		return nil, err
 	}
 
@@ -96,6 +109,7 @@ func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
 	// Create a new request
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
+		log.Printf("Failed to create request: %s\n", err.Error())
 		return nil, err
 	}
 
@@ -113,6 +127,7 @@ func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
 	client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil {
+		log.Printf("Failed to make request: %s\n", err.Error())
 		return nil, err
 	}
 	defer response.Body.Close()
@@ -120,12 +135,14 @@ func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
 	// Read the response body
 	data, err := io.ReadAll(response.Body)
 	if err != nil {
+		log.Printf("Failed to read response body: %s\n", err.Error())
 		return nil, err
 	}
 
 	// Unmarshal the JSON data into the UserInfo struct
 	var userInfo UserInfo
 	if err := json.Unmarshal(data, &userInfo); err != nil {
+		log.Printf("Failed to unmarshal JSON: %s\n", err.Error())
 		return nil, err
 	}
 
@@ -133,34 +150,41 @@ func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
 }
 
 // CreateToken creates a JWT token with the userEmail as the subject
-// and a validity of 1 hour
 // returns the token or an error
 // param userEmail: the user's email address
 // param userID: the user's ID in database
-func CreateToken(userEmail string, userID int) (string, error) {
+// param hour: the validity of the token in hour
+func CreateToken(userEmail string, userID int, hour int) (string, error) {
 	var mySigningKey = []byte(os.Getenv("SIGNING_KEY"))
 
 	// use HASH256 to sign the token
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
+	// token valid for x hour
+	claims["exp"] = time.Now().Add(time.Hour * time.Duration(hour)).Unix()
+	// info about the user to be encoded in the token
 	claims["userEmail"] = userEmail
 	claims["userID"] = userID
-	claims["exp"] = time.Now().Add(time.Hour * 1).Unix()
 
 	tokenString, err := token.SignedString(mySigningKey)
 
 	if err != nil {
+		log.Printf("Failed to sign token: %s\n", err.Error())
 		return "", err
 	}
 
 	return tokenString, nil
 }
 
+// ValidateTokenMiddleware validates the token from the Authorization header
+// every request with this middleware will require a valid token
+// Note: only appllies to routes that require authentication
 func ValidateTokenMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenString := extractToken(r)
 
 		if tokenString == "" {
+			log.Printf("Authorization token is required\n")
 			http.Error(w, "Authorization token is required", http.StatusUnauthorized)
 			return
 		}
@@ -168,6 +192,7 @@ func ValidateTokenMiddleware(next http.Handler) http.Handler {
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			// Validate the signing algorithm
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				log.Printf("Unexpected signing method: %v\n", token.Header["alg"])
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 
@@ -175,26 +200,30 @@ func ValidateTokenMiddleware(next http.Handler) http.Handler {
 		})
 
 		if err != nil {
+			log.Printf("Failed to parse token: %s\n", err.Error())
 			http.Error(w, "Invalid authorization token", http.StatusUnauthorized)
 			return
 		}
 
 		// The token is valid and not expired
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			// Extract the user info from the token
 			userEmail := claims["userEmail"].(string)
 			userID := claims["userID"].(float64)
 
 			if userEmail == "" || userID <= 0 {
 				// Handle error: userEmail or userID not found in token
+				log.Printf("userEmail or userID not found in the token\n")
 				http.Error(w, "userEmail or userID not found in the token", http.StatusUnauthorized)
 				return
 			}
 
-			// Add the userID to the request context
+			// Add the db userID to the request context
 			ctx := context.WithValue(r.Context(), "userID", int(userID))
 			next.ServeHTTP(w, r.WithContext(ctx))
 
 		} else {
+			log.Printf("Invalid authorization token\n")
 			http.Error(w, "Invalid authorization token", http.StatusUnauthorized)
 			return
 		}
@@ -213,12 +242,4 @@ func extractToken(r *http.Request) string {
 	}
 
 	return ""
-}
-
-// UserInfo represents the user's information returned from the OAuth provider
-type UserInfo struct {
-	ID            string `json:"id"`
-	Email         string `json:"email"`
-	VerifiedEmail bool   `json:"verified_email"`
-	Name          string `json:"name"`
 }

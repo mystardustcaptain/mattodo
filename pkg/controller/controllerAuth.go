@@ -50,8 +50,10 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Complete db user data needed
 	var db_user model.User
 
+	// If exist, get the user entry from the database
 	if exist {
 		db_user = model.User{Email: userInfo.Email}
 		if err := db_user.GetUserByEmail(c.Database); err != nil {
@@ -80,7 +82,7 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// But changed the associated EMAIL, ...
 
 	// Create a JWT token valid for 1 hour
-	token, err := auth.CreateToken(db_user.Email, db_user.ID)
+	token, err := auth.CreateToken(db_user.Email, db_user.ID, 1)
 	if err != nil {
 		fmt.Println("Failed to create token: ", err.Error())
 		respondWithError(w, http.StatusInternalServerError, "Failed to create token")
