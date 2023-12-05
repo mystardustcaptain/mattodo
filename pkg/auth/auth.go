@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,10 +24,9 @@ import (
 
 // UserInfo represents the user's information returned from the OAuth provider
 type UserInfo struct {
-	ID            string `json:"id"`
-	Email         string `json:"email"`
-	VerifiedEmail bool   `json:"verified_email"`
-	Name          string `json:"name"`
+	ID    string `json:"id"`
+	Email string `json:"email"`
+	Name  string `json:"name"`
 }
 
 // OAuthConfigurations for multiple providers
@@ -37,21 +37,21 @@ var OAuthConfigs map[string]*oauth2.Config
 func init() {
 	OAuthConfigs = map[string]*oauth2.Config{
 		"google": {
-			RedirectURL:  "http://localhost:9003/auth/callback?provider=google",
+			RedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
 			ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 			ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 			Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
 			Endpoint:     google.Endpoint,
 		},
 		"facebook": {
-			RedirectURL:  "http://localhost:9003/auth/callback?provider=facebook",
+			RedirectURL:  os.Getenv("FACEBOOK_REDIRECT_URL"),
 			ClientID:     os.Getenv("FACEBOOK_CLIENT_ID"),
 			ClientSecret: os.Getenv("FACEBOOK_CLIENT_SECRET"),
 			Scopes:       []string{"email, name"},
 			Endpoint:     facebook.Endpoint,
 		},
 		"github": {
-			RedirectURL:  "http://localhost:9003/auth/callback?provider=github",
+			RedirectURL:  os.Getenv("GITHUB_REDIRECT_URL"),
 			ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
 			ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
 			Scopes:       []string{"user:email"},
@@ -143,6 +143,7 @@ func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
 	var userInfo UserInfo
 	if err := json.Unmarshal(data, &userInfo); err != nil {
 		log.Printf("Failed to unmarshal JSON: %s\n", err.Error())
+		log.Printf("Response body: %s\n", string(data))
 		return nil, err
 	}
 
@@ -242,4 +243,38 @@ func extractToken(r *http.Request) string {
 	}
 
 	return ""
+}
+
+// UserInfo UnmarshalJSON implements the json.Unmarshaler interface to handle the ID field based on its type
+// This will be called when unmarshaling the JSON data into the UserInfo struct instead of the default behavior
+// The ID field can be a string or a float64
+// Google: string
+// Github: int
+func (u *UserInfo) UnmarshalJSON(data []byte) error {
+	// Anonymous struct to avoid recursion into UnmarshalJSON
+	var raw struct {
+		ID    interface{} `json:"id"`
+		Email string      `json:"email"`
+		Name  string      `json:"name"`
+	}
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// Handle the ID based on its type
+	switch value := raw.ID.(type) {
+	case float64: // Numeric ID from GitHub
+		u.ID = strconv.FormatFloat(value, 'f', -1, 64)
+	case string: // String ID (e.g., from Google)
+		u.ID = value
+	default:
+		return errors.New("id type is not valid")
+	}
+
+	// Assign other fields
+	u.Email = raw.Email
+	u.Name = raw.Name
+
+	return nil
 }
