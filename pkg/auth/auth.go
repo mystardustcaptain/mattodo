@@ -252,9 +252,7 @@ func (u *UserInfo) UnmarshalJSON(data []byte) error {
 	}
 
 	// Assign other fields
-
-	//trim space from Email
-	u.Email = strings.TrimSpace(u.Email)
+	u.Email = raw.Email
 	u.Name = raw.Name
 
 	return nil
@@ -357,7 +355,7 @@ func fetchGitHubEmail(userInfo *UserInfo, accessToken string) error {
 	}
 	emailData, _ := io.ReadAll(emailResponse.Body)
 
-	log.Println("Emails: ", string(emailData))
+	log.Printf("Emails: %s", string(emailData))
 
 	json.Unmarshal(emailData, &emails)
 
