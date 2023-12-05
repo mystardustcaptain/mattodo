@@ -57,6 +57,12 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// check if userInfo.Email is a valid email address format
+	if !auth.IsEmailValid(userInfo.Email) {
+		log.Println("Invalid email address found from OAuth provider")
+		respondWithError(w, http.StatusBadRequest, "Invalid email address found from OAuth provider")
+		return
+	}
 
 	// Check if user email already exists in the database
 	exist, err := model.IsUserExistByEmail(c.Database, userInfo.Email)

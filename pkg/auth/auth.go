@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -139,12 +140,45 @@ func fetchUserInfo(provider, accessToken string) (*UserInfo, error) {
 		return nil, err
 	}
 
+	// For logging purpose
+	log.Printf("Response body: %s\n", string(data))
+
 	// Unmarshal the JSON data into the UserInfo struct
 	var userInfo UserInfo
 	if err := json.Unmarshal(data, &userInfo); err != nil {
 		log.Printf("Failed to unmarshal JSON: %s\n", err.Error())
-		log.Printf("Response body: %s\n", string(data))
 		return nil, err
+	}
+
+	if provider == "github" {
+		// Fetch additional email info
+		emailReq, _ := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
+		emailReq.Header.Set("Authorization", "token "+accessToken)
+		emailResponse, err := client.Do(emailReq)
+		if err != nil {
+			log.Printf("Failed to fetch GitHub email: %s\n", err.Error())
+			return nil, err
+		}
+		defer emailResponse.Body.Close()
+
+		var emails []struct {
+			Email    string `json:"email"`
+			Primary  bool   `json:"primary"`
+			Verified bool   `json:"verified"`
+		}
+		emailData, _ := io.ReadAll(emailResponse.Body)
+
+		log.Println("Emails: ", string(emailData))
+
+		json.Unmarshal(emailData, &emails)
+
+		//Process and find primary email
+		for _, email := range emails {
+			if email.Primary && email.Verified {
+				userInfo.Email = email.Email
+				break
+			}
+		}
 	}
 
 	return &userInfo, nil
@@ -259,6 +293,7 @@ func (u *UserInfo) UnmarshalJSON(data []byte) error {
 	}
 
 	if err := json.Unmarshal(data, &raw); err != nil {
+		log.Printf("Failed to unmarshal JSON: %s\n", err.Error())
 		return err
 	}
 
@@ -269,12 +304,24 @@ func (u *UserInfo) UnmarshalJSON(data []byte) error {
 	case string: // String ID (e.g., from Google)
 		u.ID = value
 	default:
+		log.Printf("ID type is not valid: %T\n", value)
 		return errors.New("id type is not valid")
 	}
 
 	// Assign other fields
-	u.Email = raw.Email
+
+	//trim space from Email
+	u.Email = strings.TrimSpace(u.Email)
 	u.Name = raw.Name
 
 	return nil
+}
+
+// IsEmailValid checks if the email address is valid
+// returns true if valid, false otherwise
+func IsEmailValid(email string) bool {
+	// Regular expression for basic email validation
+	emailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
+
+	return emailRegex.MatchString(email)
 }
