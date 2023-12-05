@@ -8,7 +8,8 @@ cd mattodo
 go mod download
 ```
 
-
+Please note that, if you plan to run the service locally, `gcc` dependencies will be required.
+Highly recommended to work with Docker.
 
 
 ## Configuration
@@ -37,6 +38,7 @@ SERVICE_PORT=:9003
 DB_TYPE=sqlite3
 DB_PATH=./mainDB.sqlite3
 ```
+
 
 
 
@@ -79,17 +81,141 @@ Hence the much simpler command.
 
 
 
-## Testing the App
+## Testing the App (Unit Test)
 
-Explain how to run the automated tests for this system.
+Currently only one test file is created under `./pkg/model` in `todo_test.go`.
+
+### From Terminal
+To run the test from command prompt, from the root level of the project, execute:
 
 ```bash
-go test ./...
+go test ./pkg/model/...
 ```
 
-## Interface Documentation
+### From Visual Studio > Testing
+From Visual Studio > Testing, the comprehensive list of all available tests in the projects are listed.
 
-Details about the interfaces used in the project and how to use them.
+You can choose to run all or selectively a few tests, and see the results all visually from the panel.
 
+
+
+## Building the App
+
+### From Visual Studio
+```bash
+go build
 ```
+`mattodo.exe` will be created. Together with the `.env` and `db` files, the service will ru successfully.
+
+(GCC dependencies required)
+
+### Docker
+At the root level of the project next to Dockerfile:
+```bash
+docker build -t mattodo . 
+```
+
+Or to Build + Run using Docker Compose with `docker-compose.yml`:
+```bash
+docker compose up
+```
+
+## API Documentation
+After making sure the service is up, start using the Todo features with APIs available below.
+
+### Login
+There are currently 2 Authentication Provider supported: Google, Github. (Facebook in progress)
+
+You are recommended to visit the link via Browser, as it will direct you to the HTML login interface at the provider platform.
+
+[http://localhost:9003/auth/login?provider=google](http://localhost:9003/auth/login?provider=google)
+
+[http://localhost:9003/auth/login?provider=github](http://localhost:9003/auth/login?provider=github)
+
+[http://localhost:9003/auth/login?provider=facebook  (coming soon)](http://localhost:9003/auth/login?provider=facebook)
+
+A JWT Token will be provided when login is successful.
+
+Save it down, replace `my_JWT_token` with the real token received in the subsequent calls below.
+.
+
+### Get All Todo Items
+To retrieve all the Todo items associated to you (by Email address):
+```bash
+curl -H "Authorization: Bearer my_JWT_token" http://localhost:9003/todo
+```
+
+
+If successful, you will receive all the Todo items belong to you:
+```json
+[
+    {
+        "id": 1,
+        "user_id": 1,
+        "title": "Item 1",
+        "completed": false,
+        "created_at": "2023-12-03T13:08:04Z",
+        "updated_at": "2023-12-03T13:10:56Z"
+    },
+    {
+        "id": 14,
+        "user_id": 1,
+        "title": "Item 2",
+        "completed": false,
+        "created_at": "2023-12-05T07:49:50.535983103Z",
+        "updated_at": "2023-12-05T07:49:50.535983162Z"
+    }
+]
+```
+### Create Todo Item
+To create a Todo item associated to you:
+```bash
+curl -X POST -H "Authorization: Bearer my_JWT_token" http://localhost:9003/todo -H "Content-Type: application/json" --data "{'title': 'My Birthday', 'completed': false}"
+```
+
+If successful, you will received the Todo item created:
+```json
+{
+    "id": 15,
+    "user_id": 1,
+    "title": "My Birthday",
+    "completed": false,
+    "created_at": "2023-12-05T08:48:03.59392094Z",
+    "updated_at": "2023-12-05T08:48:03.59392094Z"
+}
+```
+
+### Delete Todo Item
+To delete a Todo item associated to you, of given id:
+```bash
+curl -X DELETE -H "Authorization: Bearer my_JWT_token" http://localhost:9003/todo/{id}
+```
+Example:
+```bash
+curl -X DELETE -H "Authorization: Bearer my_JWT_token" http://localhost:9003/todo/2
+```
+
+If successful, you will receve `StatusCode: 204` with no other content.
+
+If the Todo item you're trying to delete does not belong to you, the delete will fail.
+
+### Mark Todo Item as Completed
+To mark a Todo item associated to you, of given id, to Completed:
+```bash
+curl -X PUT -H "Authorization: Bearer my_JWT_token" http://localhost:9003/todo/{id}/complete
+```
+Example:
+```bash
+curl -X PUT -H "Authorization: Bearer my_JWT_token" http://localhost:9003/todo/2/complete
+```
+If successful, you will received the complete Todo item updated:
+```json
+{
+    "id": 15,
+    "user_id": 1,
+    "title": "My Birthday",
+    "completed": true,
+    "created_at": "2023-12-05T08:48:03.59392094Z",
+    "updated_at": "2023-12-10T10:00:00.39291084Z"
+}
 ```
