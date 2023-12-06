@@ -36,8 +36,8 @@ GITHUB_REDIRECT_URL=http://localhost:9003/auth/callback?provider=github
 SIGNING_KEY=1234
 
 SERVICE_PORT=:9003
-DB_TYPE=sqlite3
-DB_PATH=./mainDB.sqlite3
+DB_TYPE=sqlite
+DB_PATH=./mainDB.db
 ```
 
 

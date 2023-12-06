@@ -29,7 +29,7 @@ RUN apk --no-cache add ca-certificates
 COPY --from=builder /go/bin/app /app
 
 # Copy the SQLite database file
-COPY mainDB.sqlite3 .
+COPY mainDB.db .
 
 # Command to run the executable
 ENTRYPOINT ["/app"]

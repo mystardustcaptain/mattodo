@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"os"
 
-	_ "github.com/mattn/go-sqlite3"
-
 	_ "github.com/mystardustcaptain/mattodo/pkg/config"
 	"github.com/mystardustcaptain/mattodo/pkg/database"
 	"github.com/mystardustcaptain/mattodo/pkg/route"
