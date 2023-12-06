@@ -8,7 +8,7 @@ cd mattodo
 go mod download
 ```
 
-**Note**: To run the service locally, `gcc` dependencies are required. Using Docker is highly recommended.
+
 
 
 ## Configuration
@@ -59,7 +59,6 @@ docker run -p 9003:9003 --env-file .env -e DOCKER_ENV_SET=true eiggub/mattodo
 
 - Run the service from Visual Studio.
 - Ensure `.env` is at the root level next to `main.go`.
-- `GCC` libraries are required due to `SQLite3` dependencies.
 
 ```bash
 go run .
@@ -101,7 +100,6 @@ go build
 ```
 Ensure `.env` and database files are alongside the generated `mattodo.exe`.
 
-(`GCC` dependencies required)
 
 ### Using Docker
 Build with Docker:
