@@ -1,17 +1,14 @@
 # Build stage
 FROM golang:alpine AS builder
 
-# Install git and gcc (CGO requires a C compiler)
-RUN apk add --no-cache git gcc musl-dev
+# Install git
+RUN apk add --no-cache git
 
 # Set the current working directory inside the container
 WORKDIR /go/src/app
 
 # Copy the source from the current directory to the working directory inside the container
 COPY . .
-
-# Enable CGO
-ENV CGO_ENABLED=1
 
 # Fetch dependencies
 RUN go get -d -v ./...
