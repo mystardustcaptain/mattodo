@@ -18,6 +18,9 @@ type UserCollection struct {
 	DB *sql.DB
 }
 
+// GetUserById gets a user by Email from the database.
+// Returns nil if no user is found with error.
+// Returns a pointer to the user if found with no error.
 func (uc *UserCollection) GetUserByEmail(email string) (*User, error) {
 	query := "SELECT id, oauth_provider, oauth_id, name, email FROM users WHERE email = ?"
 
@@ -32,7 +35,9 @@ func (uc *UserCollection) GetUserByEmail(email string) (*User, error) {
 	return &u, nil
 }
 
-// expect u to be modified
+// CreateUser creates a new user in the database.
+// expect u to be modified with the new user's ID.
+// Returns error if the user could not be created, or if the ID could not be retrieved.
 func (uc *UserCollection) CreateUser(u *User) error {
 	query := "INSERT INTO users (oauth_provider, oauth_id, name, email) VALUES (?, ?, ?, ?)"
 	res, err := uc.DB.Exec(query, u.OAuthProvider, u.OAuthID, u.Name, u.Email)
