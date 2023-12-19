@@ -154,6 +154,8 @@ func TestCreateTodoItem_ExecuteCorrectQuery(t *testing.T) {
 		WithArgs(2, "Todo 2", true, expectedTimeNow, expectedTimeNow).
 		WillReturnResult(sqlmock.NewResult(3, 1)) // expect id 3 to be returned
 
+	tc := model.TodoItemCollection{DB: db}
+
 	/// Act
 	///
 	todo := model.TodoItem{
@@ -164,7 +166,7 @@ func TestCreateTodoItem_ExecuteCorrectQuery(t *testing.T) {
 		UpdatedAt: time.Now().Add(-time.Hour * 3), // ignore what user specified, will be overwritten
 	}
 	// call CreateTodoItem and pass the mocked db instance
-	err := todo.CreateTodoItem(db, 2) // system specified user id 2
+	err := tc.CreateTodoItem(2, &todo) // system specified user id 2
 	if err != nil {
 		t.Errorf("error was not expected while creating todo item: %s", err)
 	}
@@ -197,24 +199,18 @@ func TestMarkComplete_ExecuteCorrectQuery(t *testing.T) {
 	}
 	defer db.Close()
 
-	expectedTimeNow := time.Now()
+	expectedTimeNow := time.Now() // expected MarkComplete() to update updated_at to now
 
 	mock.ExpectExec("UPDATE todos SET completed = \\?, updated_at = \\? WHERE id = \\? AND user_id = \\?").
 		WithArgs(true, expectedTimeNow, 2, 3).     //aiming for todo id 2, user id 3
 		WillReturnResult(sqlmock.NewResult(-1, 1)) // expect impacted rows to be 1
 
+	tc := model.TodoItemCollection{DB: db}
+
 	/// Act
 	///
-	todo := model.TodoItem{
-		ID:        2,                              // MarkComplete is called on todo item id 2
-		UserID:    45,                             // Ignore what user specified, use system specified user id 3 instead, will not be updated in the object
-		Title:     "Todo 2",                       // Ignore
-		Completed: false,                          // Expect to be updated to true
-		CreatedAt: time.Now().Add(-time.Hour * 3), // Ignore
-		UpdatedAt: time.Now().Add(-time.Hour * 3), //Expect to be updated to now
-	}
-	// call MarkComplete and pass the mocked db instance
-	err := todo.MarkComplete(db, 3) // system specified user id 3
+	// call MarkComplete on todo item id 2, user id 3
+	err := tc.MarkComplete(3, 2)
 	if err != nil {
 		t.Errorf("error was not expected while creating todo item: %s", err)
 	}
@@ -222,12 +218,6 @@ func TestMarkComplete_ExecuteCorrectQuery(t *testing.T) {
 	/// Assert
 	///
 	assert.NoError(t, err, "Expected no error but got one")
-	assert.Equal(t, 2, todo.ID)
-	assert.Equal(t, 45, todo.UserID) // even though user specified user id 45, the system should use user id 3 instead, and do not update the user id in the object
-	assert.Equal(t, "Todo 2", todo.Title, "Expected title not updated")
-	assert.Equal(t, true, todo.Completed) // status should be updated to true and updated in the object
-	assert.NotEqual(t, expectedTimeNow, todo.CreatedAt, "Expected created_at not updated")
-	assert.Equal(t, expectedTimeNow, todo.UpdatedAt, "Expected updated_at to be time of creation instead of what user given")
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)

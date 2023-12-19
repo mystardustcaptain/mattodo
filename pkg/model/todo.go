@@ -61,7 +61,7 @@ func GetAllTodoItems(db *sql.DB, userID int) ([]*TodoItem, error) {
 // Takes in a userID to ensure that the TodoItem created goes to the User.
 // TodoItem Fields taken: Title, Completed
 // Fields ignored: ID, UserID, CreatedAt, UpdatedAt
-func (t *TodoItem) CreateTodoItem(db *sql.DB, userID int) error {
+func (tc *TodoItemCollection) CreateTodoItem(userID int, t *TodoItem) error {
 	query := "INSERT INTO todos (user_id, title, completed, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
 
 	// You can only create a todo item for yourself
@@ -74,7 +74,7 @@ func (t *TodoItem) CreateTodoItem(db *sql.DB, userID int) error {
 	t.CreatedAt = time.Now()
 	t.UpdatedAt = time.Now()
 
-	result, err := db.Exec(query, t.UserID, t.Title, t.Completed, t.CreatedAt, t.UpdatedAt)
+	result, err := tc.DB.Exec(query, t.UserID, t.Title, t.Completed, t.CreatedAt, t.UpdatedAt)
 	if err != nil {
 		log.Printf("Failed to create todo item: %s", err.Error())
 		return err
@@ -93,24 +93,15 @@ func (t *TodoItem) CreateTodoItem(db *sql.DB, userID int) error {
 	return nil
 }
 
-// MarkComplete function to mark a TodoItem as completed.
-// Takes in a userID to ensure that the TodoItem belongs to the User.
-// TodoItem Fields taken: ID
-// Ignored fields: UserID, Title, Completed, CreatedAt, UpdatedAt
-func (t *TodoItem) MarkComplete(db *sql.DB, userID int) error {
+// MarkComplete function marks a TodoItem as completed for a User of a given userID.
+// Returns error if the TodoItem could not be marked as completed.
+func (tc *TodoItemCollection) MarkComplete(userID int, todoItemID int) error {
 	query := "UPDATE todos SET completed = ?, updated_at = ? WHERE id = ? AND user_id = ?"
 
 	// Update the TodoItem
 	// Mark it as completed and update the timestamp to the current time
-	t.Completed = true
-	t.UpdatedAt = time.Now()
-
-	result, err := db.Exec(query, t.Completed, t.UpdatedAt, t.ID, userID)
+	result, err := tc.DB.Exec(query, true, time.Now(), todoItemID, userID)
 	if err != nil {
-		// Reset the TodoItem to its original state if there was an error
-		t.Completed = false
-		t.UpdatedAt = time.Time{}
-
 		log.Printf("Failed to mark todo item as complete: %s", err.Error())
 		return err
 	}
@@ -134,22 +125,22 @@ func (t *TodoItem) MarkComplete(db *sql.DB, userID int) error {
 }
 
 // GetTodoItem function to get a TodoItem by its ID for a User of a given userID.
-// TodoItem Fields taken: ID
-// Ignored fields: UserID, Title, Completed, CreatedAt, UpdatedAt
-func (t *TodoItem) GetTodoItem(db *sql.DB, userID int) error {
+// Returns error if the TodoItem could not be retrieved.
+func (tc *TodoItemCollection) GetTodoItem(userID int, todoItemID int) (*TodoItem, error) {
 	query := "SELECT id, user_id, title, completed, created_at, updated_at FROM todos WHERE id = ? AND user_id = ?"
 
-	err := db.QueryRow(query, t.ID, userID).Scan(&t.ID, &t.UserID, &t.Title, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
+	t := TodoItem{}
+	err := tc.DB.QueryRow(query, todoItemID, userID).Scan(&t.ID, &t.UserID, &t.Title, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		// Error returned might not be clear enough to the user
 		// whether the TodoItem was not found (does not exist or does not belong to the user)
 		// or if there was some other error
 
 		log.Printf("Failed to get todo item: %s", err.Error())
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &t, nil
 }
 
 // DeleteTodoItem function delete a TodoItem by its ID for a User of a given userID.

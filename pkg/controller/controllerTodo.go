@@ -60,8 +60,10 @@ func (c *Controller) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := io.ReadAll(r.Body)
 	json.Unmarshal(reqBody, &t)
 
+	tc := model.TodoItemCollection{DB: c.Database}
+
 	// Create the todo item in the database
-	err := t.CreateTodoItem(c.Database, iam)
+	err := tc.CreateTodoItem(iam, &t)
 	if err != nil {
 		log.Printf("Failed to create todo item: %s", err.Error())
 		respondWithError(w, http.StatusInternalServerError, "Failed to create todo item: "+err.Error())
@@ -117,8 +119,6 @@ func (c *Controller) MarkTodoCompleteById(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	t := model.TodoItem{UserID: iam}
-
 	// Retrieve the todo item id from the request path
 	// This is the target todo item to be marked complete
 	vars := mux.Vars(r)
@@ -128,10 +128,11 @@ func (c *Controller) MarkTodoCompleteById(w http.ResponseWriter, r *http.Request
 		respondWithError(w, http.StatusBadRequest, "Invalid todo ID")
 		return
 	}
-	t.ID = todoItemID
+
+	tc := model.TodoItemCollection{DB: c.Database}
 
 	// Mark the todo item as complete in the database
-	err = t.MarkComplete(c.Database, iam)
+	err = tc.MarkComplete(iam, todoItemID)
 	if err != nil {
 		log.Printf("Failed to mark complete todo item: %s", err.Error())
 		respondWithError(w, http.StatusInternalServerError, "Failed to mark complete todo item: "+err.Error())
@@ -140,12 +141,12 @@ func (c *Controller) MarkTodoCompleteById(w http.ResponseWriter, r *http.Request
 
 	// Retrieve the todo item from the database
 	// to return to the user
-	err = t.GetTodoItem(c.Database, iam)
+	tdi, err := tc.GetTodoItem(iam, todoItemID)
 	if err != nil {
 		log.Printf("Failed to retrieve item after mark complete: %s", err.Error())
 		respondWithError(w, http.StatusInternalServerError, "Failed to retrieve item after mark complete: "+err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, t)
+	respondWithJSON(w, http.StatusOK, tdi)
 }
