@@ -248,20 +248,12 @@ func TestDeleteTodoItem_ExecuteCorrectQuery(t *testing.T) {
 		WithArgs(2, 3).                            //aiming for todo id 2, user id 3
 		WillReturnResult(sqlmock.NewResult(-1, 1)) // expect impacted rows to be 1
 
-	expected_time := time.Now().Add(-time.Hour * 3)
-
 	/// Act
 	///
-	todo := model.TodoItem{
-		ID:        2,             // Delete is called on todo item id 2
-		UserID:    45,            // Ignore what user specified, use system specified user id 3 instead
-		Title:     "Todo 2",      // Ignore
-		Completed: false,         // Ignore
-		CreatedAt: expected_time, // Ignore
-		UpdatedAt: expected_time, // Ignore
-	}
-	// call DeleteTodoItem and pass the mocked db instance
-	err := todo.DeleteTodoItem(db, 3) // system specified user id 3
+	tc := model.TodoItemCollection{DB: db}
+
+	// call DeleteTodoItem aiming for todo id 2, user id 3
+	err := tc.DeleteTodoItem(3, 2)
 	if err != nil {
 		t.Errorf("error was not expected while creating todo item: %s", err)
 	}
@@ -269,12 +261,6 @@ func TestDeleteTodoItem_ExecuteCorrectQuery(t *testing.T) {
 	/// Assert
 	///
 	assert.NoError(t, err, "Expected no error but got one")
-	assert.Equal(t, 2, todo.ID, "Expected no change and ignored")
-	assert.Equal(t, 45, todo.UserID, "Expected no change and ignored")
-	assert.Equal(t, "Todo 2", todo.Title, "Expected no change and ignored")
-	assert.Equal(t, false, todo.Completed, "Expected no change and ignored")
-	assert.Equal(t, expected_time, todo.CreatedAt, "Expected no change and ignored")
-	assert.Equal(t, expected_time, todo.UpdatedAt, "Expected no change and ignored")
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)

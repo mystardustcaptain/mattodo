@@ -82,8 +82,6 @@ func (c *Controller) DeleteTodoById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t := model.TodoItem{UserID: iam}
-
 	// Retrieve the todo item id from the request path
 	// This is the target todo item to be deleted
 	vars := mux.Vars(r)
@@ -92,10 +90,12 @@ func (c *Controller) DeleteTodoById(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid todo ID")
 		return
 	}
-	t.ID = todoItemID
+	itemID := todoItemID
+
+	tc := model.TodoItemCollection{DB: c.Database}
 
 	// Delete the todo item from the database
-	err = t.DeleteTodoItem(c.Database, iam)
+	err = tc.DeleteTodoItem(iam, itemID)
 	if err != nil {
 		log.Printf("Failed to delete todo item: %s", err.Error())
 		respondWithError(w, http.StatusInternalServerError, "Failed to delete todo item: "+err.Error())

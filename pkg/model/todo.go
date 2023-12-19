@@ -16,6 +16,10 @@ type TodoItem struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type TodoItemCollection struct {
+	DB *sql.DB
+}
+
 // GetAllTodoItems function to get all TodoItems for a User of a given userID.
 func GetAllTodoItems(db *sql.DB, userID int) ([]*TodoItem, error) {
 	var todoItems []*TodoItem
@@ -148,13 +152,12 @@ func (t *TodoItem) GetTodoItem(db *sql.DB, userID int) error {
 	return nil
 }
 
-// DeleteTodoItem function to delete a TodoItem by its ID for a User of a given userID.
-// TodoItem Fields taken: ID
-// Ignored fields: UserID, Title, Completed, CreatedAt, UpdatedAt
-func (t *TodoItem) DeleteTodoItem(db *sql.DB, userID int) error {
+// DeleteTodoItem function delete a TodoItem by its ID for a User of a given userID.
+// Returns error if the TodoItem could not be deleted.
+func (tc *TodoItemCollection) DeleteTodoItem(userID int, todoItemID int) error {
 	query := "DELETE FROM todos WHERE id = ? AND user_id = ?"
 
-	result, err := db.Exec(query, t.ID, userID)
+	result, err := tc.DB.Exec(query, todoItemID, userID)
 	if err != nil {
 		log.Printf("Failed to delete todo item: %s", err.Error())
 		return err
