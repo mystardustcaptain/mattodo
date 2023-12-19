@@ -31,8 +31,10 @@ func (c *Controller) GetTodos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tc := model.TodoItemCollection{DB: c.Database}
+
 	// Retrieve all todo items for the user
-	todoItems, err := model.GetAllTodoItems(c.Database, iam)
+	todoItems, err := tc.GetAllTodoItems(iam)
 	if err != nil {
 		log.Printf("Failed to get all todo items: %s", err.Error())
 		respondWithError(w, http.StatusInternalServerError, err.Error())

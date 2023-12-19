@@ -21,12 +21,12 @@ type TodoItemCollection struct {
 }
 
 // GetAllTodoItems function to get all TodoItems for a User of a given userID.
-func GetAllTodoItems(db *sql.DB, userID int) ([]*TodoItem, error) {
+func (tc *TodoItemCollection) GetAllTodoItems(userID int) ([]*TodoItem, error) {
 	var todoItems []*TodoItem
 
 	query := "SELECT id, user_id, title, completed, created_at, updated_at FROM todos WHERE user_id = ?"
 
-	rows, err := db.Query(query, userID)
+	rows, err := tc.DB.Query(query, userID)
 	if err != nil {
 		log.Printf("Failed to get all todo items: %s", err.Error())
 		return nil, err

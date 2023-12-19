@@ -31,10 +31,12 @@ func TestGetAllTodoItems_ExecuteCorrectQuery(t *testing.T) {
 			AddRow(2, 2, "Todo 2", false, time.Now(), time.Now()).
 			AddRow(3, 2, "Todo 3", false, time.Now(), time.Now()))
 
+	tc := model.TodoItemCollection{DB: db}
+
 	/// Act
 	///
-	// call GetAllTodoItems and pass the mocked db instance
-	todos, err := model.GetAllTodoItems(db, 2)
+	// call GetAllTodoItems on user id 2
+	todos, err := tc.GetAllTodoItems(2)
 	if err != nil {
 		t.Errorf("error was not expected while getting todo items: %s", err)
 	}
@@ -78,10 +80,12 @@ func TestGetAllTodoItems_ReturnNothingWhenQueryError(t *testing.T) {
 		WithArgs(2).
 		WillReturnError(customErr)
 
+	tc := model.TodoItemCollection{DB: db}
+
 	/// Act
 	///
-	// call GetAllTodoItems and pass the mocked db instance
-	todos, err := model.GetAllTodoItems(db, 2)
+	// call GetAllTodoItems on user id 2
+	todos, err := tc.GetAllTodoItems(2)
 
 	/// Assert
 	///
@@ -117,9 +121,11 @@ func TestGetAllTodoItems_ReturnNothingWhenScanError(t *testing.T) {
 			AddRow(2, 2, "Todo 2", false, time.Now(), time.Now()).
 			AddRow(3, 2, "Todo 3", false, time.Now(), "hi")) // This will cause an error due to the wrong type
 
+	tc := model.TodoItemCollection{DB: db}
+
 	/// Act
-	// call GetAllTodoItems and pass the mocked db instance
-	todos, err := model.GetAllTodoItems(db, 2)
+	// call GetAllTodoItems on user id 2
+	todos, err := tc.GetAllTodoItems(2)
 
 	/// Assert
 	///
