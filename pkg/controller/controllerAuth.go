@@ -64,33 +64,22 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if user email already exists in the database
-	exist, err := model.IsUserExistByEmail(c.Database, userInfo.Email)
+	uc := model.UserCollection{DB: c.Database}
+
+	// Try getting user from the database
+	user, _ := uc.GetUserByEmail(userInfo.Email)
 	if err != nil {
-		log.Printf("Failed to check user existance: %s", err.Error())
+		log.Printf("Failed to get user entry: %s", err.Error())
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// Complete db user data needed
-	var db_user model.User
-
-	// If exist, get the user entry from the database
-	if exist {
-		db_user = model.User{Email: userInfo.Email}
-		if err := db_user.GetUserByEmail(c.Database); err != nil {
-			log.Printf("Failed to get user entry: %s", err.Error())
-			respondWithError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		log.Printf("User entry found: %s", userInfo.Email)
-	} else {
+	if user == nil {
 		// If not exist, create a user entry in the database
 		log.Printf("User not found, registering user entry.")
 
-		db_user = model.User{OAuthProvider: provider, OAuthID: userInfo.ID, Name: userInfo.Name, Email: userInfo.Email}
-		if err := db_user.CreateUser(c.Database); err != nil {
+		user = &model.User{OAuthProvider: provider, OAuthID: userInfo.ID, Name: userInfo.Name, Email: userInfo.Email}
+		if err := uc.CreateUser(user); err != nil {
 			log.Printf("Failed to create user entry: %s", err.Error())
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -104,7 +93,7 @@ func (c *Controller) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// But changed the associated EMAIL, ...
 
 	// Create a JWT token valid for 1 hour
-	token, err := auth.CreateToken(db_user.Email, db_user.ID, 1)
+	token, err := auth.CreateToken(user.Email, user.ID, 1)
 	if err != nil {
 		log.Printf("Failed to create token: %s", err.Error())
 		respondWithError(w, http.StatusInternalServerError, "Failed to create token")

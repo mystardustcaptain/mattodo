@@ -14,33 +14,28 @@ type User struct {
 	Email         string `json:"email"`
 }
 
-// IsUserExistByEmail checks if a user with the given email exists in the database
-func IsUserExistByEmail(db *sql.DB, email string) (bool, error) {
-	var exists bool
+type UserCollection struct {
+	DB *sql.DB
+}
 
-	// The query checks if there is at least one entry with the given email
-	query := "SELECT EXISTS(SELECT 1 FROM users WHERE email = ?)"
+func (uc *UserCollection) GetUserByEmail(email string) (*User, error) {
+	query := "SELECT id, oauth_provider, oauth_id, name, email FROM users WHERE email = ?"
 
-	// Execute the query
-	err := db.QueryRow(query, email).Scan(&exists)
+	u := User{}
+	err := uc.DB.QueryRow(query, email).Scan(&u.ID, &u.OAuthProvider, &u.OAuthID, &u.Name, &u.Email)
+
 	if err != nil {
-		log.Printf("Failed to check user existance: %s", err.Error())
-		return false, err
+		log.Printf("Failed to get user by email: %s", err.Error())
+		return nil, err
 	}
 
-	return exists, nil
+	return &u, nil
 }
 
-// GetUserByEmail retrieves a user with the given email from the database
-func (u *User) GetUserByEmail(db *sql.DB) error {
-	query := "SELECT id, oauth_provider, oauth_id, name, email FROM users WHERE email = ?"
-	return db.QueryRow(query, u.Email).Scan(&u.ID, &u.OAuthProvider, &u.OAuthID, &u.Name, &u.Email)
-}
-
-// CreateUser creates a new user in the database
-func (u *User) CreateUser(db *sql.DB) error {
+// expect u to be modified
+func (uc *UserCollection) CreateUser(u *User) error {
 	query := "INSERT INTO users (oauth_provider, oauth_id, name, email) VALUES (?, ?, ?, ?)"
-	res, err := db.Exec(query, u.OAuthProvider, u.OAuthID, u.Name, u.Email)
+	res, err := uc.DB.Exec(query, u.OAuthProvider, u.OAuthID, u.Name, u.Email)
 	if err != nil {
 		log.Printf("Failed to create user: %s", err.Error())
 		return err
